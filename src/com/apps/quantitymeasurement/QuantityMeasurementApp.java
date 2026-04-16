@@ -12,10 +12,12 @@ class Length {
     private final double value;
     private final LengthUnit unit;
 
-    // Enum simplifies adding new units like YARDS or CM later
     public enum LengthUnit {
+        // All conversion factors are relative to 1 Inch
         FEET(12.0),
-        INCHES(1.0);
+        INCHES(1.0),
+        YARDS(36.0),
+        CENTIMETERS(0.393701); // 1 cm ≈ 0.393701 inches
 
         private final double conversionFactor;
 
@@ -33,12 +35,12 @@ class Length {
         this.unit = unit;
     }
 
-    // Converts the current value to the base unit (Inches)
     private double convertToBaseUnit() {
-        return this.value * this.unit.getConversionFactor();
+        // Rounding to 2 decimal places to handle floating point precision in comparisons
+        double converted = this.value * this.unit.getConversionFactor();
+        return Math.round(converted * 100.0) / 100.0;
     }
 
-    // Comparison logic based on the converted base values
     public boolean compare(Length thatLength) {
         if (thatLength == null) return false;
         return Double.compare(this.convertToBaseUnit(), thatLength.convertToBaseUnit()) == 0;
@@ -60,17 +62,20 @@ class Length {
  */
 class QuantityMeasurementApp {
 
-    public static void demonstrateFeetInchesComparison() {
-        Length feet = new Length(1.0, Length.LengthUnit.FEET);
-        Length inches = new Length(12.0, Length.LengthUnit.INCHES);
-
-        System.out.println("--- UC3: Unified Comparison ---");
-        System.out.println("Comparing 1.0 Feet to 12.0 Inches...");
-        System.out.println("Are they equal? " + feet.equals(inches));
+    public static boolean demonstrateLengthComparison(double v1, Length.LengthUnit u1, double v2, Length.LengthUnit u2) {
+        Length l1 = new Length(v1, u1);
+        Length l2 = new Length(v2, u2);
+        boolean result = l1.equals(l2);
+        System.out.println(v1 + " " + u1 + " == " + v2 + " " + u2 + " : " + result);
+        return result;
     }
 
     public static void main(String[] args) {
-        demonstrateFeetInchesComparison();
+        System.out.println("--- UC4: Extended Unit Support ---");
+        demonstrateLengthComparison(1.0, Length.LengthUnit.YARDS, 36.0, Length.LengthUnit.INCHES);
+        demonstrateLengthComparison(100.0, Length.LengthUnit.CENTIMETERS, 39.3701, Length.LengthUnit.INCHES);
+        demonstrateLengthComparison(3.0, Length.LengthUnit.FEET, 1.0, Length.LengthUnit.YARDS);
+        demonstrateLengthComparison(30.48, Length.LengthUnit.CENTIMETERS, 1.0, Length.LengthUnit.FEET);
     }
 }
 
@@ -82,39 +87,50 @@ class QuantityMeasurementApp {
 class QuantityMeasurementAppTest {
 
     @Test
-    public void testFeetInchesComparison_ShouldReturnTrue() {
-        Length feet = new Length(1.0, Length.LengthUnit.FEET);
-        Length inches = new Length(12.0, Length.LengthUnit.INCHES);
-        // This confirms 1 foot is successfully compared to 12 inches
-        assertEquals(feet, inches);
+    public void yardEquals36Inches() {
+        assertEquals(new Length(1.0, Length.LengthUnit.YARDS), new Length(36.0, Length.LengthUnit.INCHES));
     }
 
     @Test
-    public void testFeetEquality_SameValue() {
-        assertEquals(new Length(1.0, Length.LengthUnit.FEET), new Length(1.0, Length.LengthUnit.FEET));
+    public void centimeterEquals39Point3701Inches() {
+        assertEquals(new Length(100.0, Length.LengthUnit.CENTIMETERS), new Length(39.3701, Length.LengthUnit.INCHES));
     }
 
     @Test
-    public void testInchesEquality_SameValue() {
-        assertEquals(new Length(1.0, Length.LengthUnit.INCHES), new Length(1.0, Length.LengthUnit.INCHES));
+    public void threeFeetEqualsOneYard() {
+        assertEquals(new Length(3.0, Length.LengthUnit.FEET), new Length(1.0, Length.LengthUnit.YARDS));
     }
 
     @Test
-    public void testCrossUnitInequality() {
-        Length feet = new Length(1.0, Length.LengthUnit.FEET);
-        Length inches = new Length(1.0, Length.LengthUnit.INCHES);
-        assertNotEquals(feet, inches); // 1ft is not 1in
+    public void thirtyPoint48CmEqualsOneFoot() {
+        // 30.48 * 0.393701 ≈ 11.999... (Rounding in convertToBaseUnit handles this)
+        assertEquals(new Length(30.48, Length.LengthUnit.CENTIMETERS), new Length(1.0, Length.LengthUnit.FEET));
     }
 
     @Test
-    public void testNullComparison() {
-        Length feet = new Length(1.0, Length.LengthUnit.FEET);
-        assertFalse(feet.equals(null));
+    public void yardNotEqualToInches() {
+        assertNotEquals(new Length(1.0, Length.LengthUnit.YARDS), new Length(1.0, Length.LengthUnit.INCHES));
     }
 
     @Test
-    public void testDifferentClassComparison() {
-        Length feet = new Length(1.0, Length.LengthUnit.FEET);
-        assertNotEquals(feet, new Object());
+    public void referenceEqualitySameObject() {
+        Length yard = new Length(1.0, Length.LengthUnit.YARDS);
+        assertTrue(yard.equals(yard));
+    }
+
+    @Test
+    public void equalsReturnsFalseForNull() {
+        assertFalse(new Length(1.0, Length.LengthUnit.FEET).equals(null));
+    }
+
+    @Test
+    public void reflexiveSymmetricAndTransitiveProperty() {
+        Length a = new Length(1.0, Length.LengthUnit.YARDS);
+        Length b = new Length(3.0, Length.LengthUnit.FEET);
+        Length c = new Length(36.0, Length.LengthUnit.INCHES);
+
+        assertTrue(a.equals(a)); // Reflexive
+        assertTrue(a.equals(b) && b.equals(a)); // Symmetric
+        assertTrue(a.equals(b) && b.equals(c) && a.equals(c)); // Transitive
     }
 }
